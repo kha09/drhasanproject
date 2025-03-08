@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إجراءات الترجمة</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md" style="text-align: right;">
+        <h1 class="text-2xl font-bold mb-4 text-center"><span style="font-size: 14px; font-weight: 500;">Beta
+            </span>إجراءات الترجمة</h1>
+        <form id="translationForm" class="space-y-4" style="text-align: right;">
+            <div>
+                <label for="inputText" class="block text-sm font-medium text-gray-700">:أدخل الكلمة المراد ترجمتها
+                    باللغة الإنجليزية</label>
+                <input id="inputText" style="background: aliceblue;padding: 15px;margin-top: 10px;" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    required></input>
+            </div>
+            <div>
+                <p id="error" class="text-red-500 text-sm hidden">أدخل كلمة واحدة فقط</p>
+            </div>
+            <button type="submit"
+                class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">ترجم</button>
+        </form>
+        <div id="result" class="mt-6 space-y-2 hidden">
+            <div>
+                <h2 class="text-lg font-semibold">:الترجمة</h2>
+                <p id="translationOutput" class="mt-1 p-2 bg-gray-100 rounded"></p>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold">:اسلوب الترجمة</h2>
+                <p id="typeOutput" class="mt-1 p-2 bg-gray-100 rounded"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('translationForm');
+        const inputText = document.getElementById('inputText');
+        const errorElement = document.getElementById('error');
+        const submitButton = form.querySelector('button[type="submit"]');
+        const resultDiv = document.getElementById('result');
+        const translationOutput = document.getElementById('translationOutput');
+        const typeOutput = document.getElementById('typeOutput');
+
+        function setLoading(isLoading) {
+            submitButton.disabled = isLoading;
+            submitButton.innerHTML = isLoading ?
+                '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>...جاري الترجمة</span>' :
+                'ترجم';
+            inputText.disabled = isLoading;
+        }
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const text = inputText.value;
+
+            errorElement.classList.add('hidden');
+            resultDiv.classList.add('hidden');
+            setLoading(true);
+
+            try {
+                // Using a relative URL which will work with Vercel's API routes
+                const response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Translation failed: ${await response.text()}`);
+                }
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                // Parse the response
+                const translatedWordMatch = result.translation.match(/translated word: (.*?)(?=\s*type of the translation:|$)/i);
+                const translationTypeMatch = result.translation.match(/type of the translation: (.*?)$/i);
+
+                // Display results
+                resultDiv.classList.remove('hidden');
+                translationOutput.textContent = translatedWordMatch ? translatedWordMatch[1].trim() : result.translation;
+                typeOutput.textContent = translationTypeMatch ? translationTypeMatch[1].trim() : '';
+                setLoading(false);
+
+            } catch (error) {
+                console.error('Error:', error);
+                setLoading(false);
+                alert(`Translation error: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+
+</html>
